@@ -1,0 +1,3 @@
+#copy this to config.py
+user = 'you'
+password = 'secret'

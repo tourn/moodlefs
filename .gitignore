@@ -1,0 +1,4 @@
+*.pyc
+mnt/
+config.py
+*.sw?
