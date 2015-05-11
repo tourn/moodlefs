@@ -13,23 +13,41 @@ from fuse import FUSE, FuseOSError, Operations
 
 from BeautifulSoup import BeautifulSoup
 
+class MoodleNode:
+    def __init__(self, moodle, name, url):
+        self.name = name
+        self.moodle = moodle
+        self.url = url
+
+class MoodleDir(MoodleNode):
+    def __init__(self, moodle, name, url):
+        MoodleNode.__init__(self, moodle, name, url)
+        self.children = {}
+
+    def find(self, path):
+        child, subpath = path.strip('/').split('/',1)
+
+class MoodleFile(MoodleNode):
+    def info(self):
+        return
+
+    def get(self):
+        return
+
 
 class MoodleFS(Operations):
     def __init__(self):
         print('__init__')
         self.moodle = moodlesession.connect()
         print('connected')
-        self.root = 'https://moodle.hsr.ch/course/view.php?id=222'
+        self.rootURL = 'https://moodle.hsr.ch/course/view.php?id=222'
+        #self.root = MoodleDir('#', self.moodle, self.rootURL);
 
     # Helpers
     # =======
 
     def _full_path(self, partial):
-        print('_full_path')
-        if partial.startswith("/"):
-            partial = partial[1:]
-        path = os.path.join(self.root, partial)
-        return path
+        raise Error('This method is deprecated')
 
     # Filesystem methods
     # ==================
@@ -51,15 +69,27 @@ class MoodleFS(Operations):
         return os.chown(full_path, uid, gid)
 
     def getattr(self, path, fh=None):
-        print('getattr')
+        #see man fstat
+        dir = 0040555
+        file = 0100555
+        print('getattr ' + path)
+        return { 'st_atime': 0,
+                'st_ctime': 0,
+                'st_gid': os.getgid(),
+                'st_mode': dir, #TODO make dynamic for file/dir
+                'st_mtime': 0,
+                'st_nlink': 1,
+                'st_size': 100, #TODO use http HEAD on files, fluke something on dirs
+                'st_uid': os.getuid()
+                }
         st = os.lstat('.')
         return dict((key, getattr(st, key)) for key in ('st_atime', 'st_ctime',
                      'st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size', 'st_uid'))
 
     def readdir(self, path, fh):
-        print('readdir')
+        print('readdir ' + path)
         #ignore path for now, just list root
-        soup = BeautifulSoup(self.moodle.get(self.root).content)
+        soup = BeautifulSoup(self.moodle.get(self.rootURL).content)
         dirents = ['.', '..']
         for topic in soup.find('ul', { "class" : "topics" }).contents:
             if topic.has_key('aria-label'):
